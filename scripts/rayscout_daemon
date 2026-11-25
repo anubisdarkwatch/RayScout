@@ -1,0 +1,53 @@
+#!/bin/sh
+# SysV init script for RayScout on Orbic RC400L (runs alongside EFF Rayhunter & DagShell)
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+DAEMON="/data/rayscout/rayscout"
+PIDFILE="/tmp/rayscout.pid"
+LOGFILE="/data/rayscout/rayscout.log"
+ARGS="-config /data/rayscout/config.json"
+
+open_firewall() {
+  iptables -C INPUT -p tcp --dport 8090 -j ACCEPT 2>/dev/null || iptables -I INPUT -p tcp --dport 8090 -j ACCEPT 2>/dev/null || true
+  iptables -C INPUT -p tcp --dport 10110 -j ACCEPT 2>/dev/null || iptables -I INPUT -p tcp --dport 10110 -j ACCEPT 2>/dev/null || true
+  iptables -C INPUT -p udp --dport 10110 -j ACCEPT 2>/dev/null || iptables -I INPUT -p udp --dport 10110 -j ACCEPT 2>/dev/null || true
+}
+
+case "$1" in
+  start)
+    echo "Starting rayscout..."
+    mkdir -p /data/rayscout/data
+    open_firewall
+    if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+      echo "rayscout already running (pid $(cat "$PIDFILE"))"
+      exit 0
+    fi
+    start-stop-daemon -S -b --make-pidfile --pidfile "$PIDFILE" \
+      --startas /bin/sh -- -c "export PATH=/usr/sbin:/usr/bin:/sbin:/bin; exec $DAEMON $ARGS >> $LOGFILE 2>&1"
+    echo "rayscout started"
+    ;;
+  stop)
+    echo "Stopping rayscout..."
+    start-stop-daemon -K -p "$PIDFILE" 2>/dev/null || killall rayscout 2>/dev/null || true
+    rm -f "$PIDFILE"
+    ;;
+  restart)
+    $0 stop
+    sleep 1
+    $0 start
+    ;;
+  status)
+    if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+      echo "rayscout is running (pid $(cat "$PIDFILE"))"
+    else
+      echo "rayscout is stopped"
+      exit 1
+    fi
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart|status}"
+    exit 1
+    ;;
+esac
+exit 0

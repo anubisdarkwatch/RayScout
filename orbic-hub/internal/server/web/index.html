@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RayScout // Orbic RC400L RF &amp; Wardriving Hub</title>
+<style>
+  :root {
+    --bg: #0b0f14; --panel: #121821; --border: #233042;
+    --text: #dce6f2; --muted: #8294aa; --accent: #38bdf8;
+    --ok: #22c55e; --warn: #f59e0b; --high: #ef4444; --purple: #a855f7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--bg); color: var(--text); line-height: 1.45; padding: 14px; }
+  header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 14px; }
+  h1 { font-size: 1.15rem; color: var(--accent); letter-spacing: 0.04em; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 0.78rem; border: 1px solid var(--border); background: var(--panel); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .dot.ok { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .dot.warn { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+  .dot.high { background: var(--high); box-shadow: 0 0 10px var(--high); }
+
+  /* Prominent EFF Rayhunter & Cellular Signal Hero Banner */
+  .rh-hero {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px;
+    background: linear-gradient(135deg, #0d1d16 0%, #101923 65%);
+    border: 1.5px solid #1f5135; border-left: 6px solid var(--ok);
+    border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;
+    box-shadow: 0 0 22px rgba(34, 197, 94, 0.09);
+  }
+  .rh-hero.warn {
+    background: linear-gradient(135deg, #241908 0%, #151821 65%);
+    border-color: #78480c; border-left-color: var(--warn);
+    box-shadow: 0 0 22px rgba(245, 158, 11, 0.14);
+  }
+  .rh-hero.high {
+    background: linear-gradient(135deg, #2b0c10 0%, #16141d 65%);
+    border-color: #991b1b; border-left-color: var(--high);
+    box-shadow: 0 0 28px rgba(239, 68, 68, 0.28);
+    animation: rhPulse 1.6s infinite;
+  }
+  .rh-hero.offline {
+    background: var(--panel); border-color: var(--border); border-left-color: var(--muted); box-shadow: none;
+  }
+  @keyframes rhPulse {
+    0%, 100% { box-shadow: 0 0 18px rgba(239, 68, 68, 0.22); }
+    50% { box-shadow: 0 0 34px rgba(239, 68, 68, 0.5); }
+  }
+  .rh-title { font-size: 1.05rem; font-weight: 800; letter-spacing: 0.04em; display: flex; align-items: center; gap: 9px; }
+  .rh-sub { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+  .rh-badge { padding: 3px 9px; border-radius: 5px; font-size: 0.74rem; font-weight: 800; text-transform: uppercase; background: #14532d; color: #86efac; }
+  .rh-hero.warn .rh-badge { background: #78350f; color: #fde68a; }
+  .rh-hero.high .rh-badge { background: #7f1d1d; color: #fecaca; }
+  .rh-hero.offline .rh-badge { background: #1f2937; color: #9ca3af; }
+  .sig-box { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .sig-bars { display: inline-flex; align-items: flex-end; gap: 3px; height: 26px; padding: 2px 4px; }
+  .sig-bars span { width: 5px; border-radius: 2px; background: #233042; transition: background 0.2s; }
+  .sig-bars span:nth-child(1) { height: 6px; }
+  .sig-bars span:nth-child(2) { height: 11px; }
+  .sig-bars span:nth-child(3) { height: 16px; }
+  .sig-bars span:nth-child(4) { height: 21px; }
+  .sig-bars span:nth-child(5) { height: 26px; }
+  .sig-bars span.on { background: var(--ok); box-shadow: 0 0 6px rgba(34,197,94,0.5); }
+  .sig-bars.weak span.on { background: var(--warn); box-shadow: none; }
+  .rh-metrics { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.78rem; }
+  .rh-metric .m-lbl { color: var(--muted); font-size: 0.68rem; text-transform: uppercase; }
+  .rh-metric .m-val { font-size: 0.96rem; font-weight: 700; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .card .label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; }
+  .card .val { font-size: 1.35rem; font-weight: 700; margin-top: 2px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  button, .btn { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 11px; font-family: inherit; font-size: 0.82rem; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+  button:hover, .btn:hover { border-color: var(--accent); color: var(--accent); }
+  button.active { background: #162436; border-color: var(--accent); color: var(--accent); }
+  button.primary { background: #0c4a6e; border-color: var(--accent); color: #fff; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; align-items: center; }
+  .section { display: none; }
+  .section.active { display: block; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  th, td { padding: 7px 9px; text-align: left; border-bottom: 1px solid #1b2533; }
+  th { color: var(--muted); font-weight: 600; background: #0f151d; }
+  tr:hover td { background: #16202d; }
+  .badge { padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; }
+  .badge.WIFI { background: #0c4a6e; color: #7dd3fc; }
+  .badge.BLE { background: #3b0764; color: #d8b4fe; }
+  .badge.LTE, .badge.GSM, .badge.NR { background: #14532d; color: #86efac; }
+  .badge.WIFI_PROBE { background: #78350f; color: #fcd34d; }
+  .badge.LORA { background: #1e1b4b; color: #a5b4fc; }
+  .alert-item { background: var(--panel); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+  .alert-item.warn { border-left-color: var(--warn); }
+  .alert-item.high { border-left-color: var(--high); }
+  .alert-item.acked { opacity: 0.55; }
+  textarea, input[type="text"], input[type="password"], input[type="number"] {
+    width: 100%; background: #0b0f14; color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px; font-family: inherit; font-size: 0.82rem; margin-top: 4px;
+  }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+  .sub-head { font-size: 0.8rem; color: var(--accent); margin: 14px 0 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+  .msg { font-size: 0.82rem; color: var(--ok); margin-left: 8px; }
+  .msg.err { color: var(--high); }
+  @media (max-width: 640px) { .hide-sm { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>RAYSCOUT // ORBIC RC400L</h1>
+    <div style="font-size:0.75rem;color:var(--muted)">Standalone Cellular/Wi-Fi Hub + Optional XIAO ESP32-S3 / Wio-SX1262</div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px">
+    <span class="pill"><span class="dot" id="dotGPS"></span><span id="txtGPS">GPS: No Fix</span></span>
+    <span class="pill"><span class="dot" id="dotS3"></span><span id="txtS3">XIAO S3: Standalone</span></span>
+    <span class="pill" id="pillBatt" style="display:none"><span id="txtBatt">Battery: --</span></span>
+  </div>
+</header>
+
+<!-- Prominent EFF Rayhunter Sentinel & Cellular Signal Hero -->
+<div class="rh-hero offline" id="rhHero">
+  <div>
+    <div class="rh-title">
+      <span class="dot" id="dotRH"></span>
+      <span>EFF RAYHUNTER SENTINEL</span>
+      <span class="rh-badge" id="rhBadge">CHECKING...</span>
+    </div>
+    <div class="rh-sub" id="rhSub">Connecting to local Rayhunter daemon (:8080)...</div>
+  </div>
+
+  <div class="sig-box">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="sig-bars" id="cellBars"><span></span><span></span><span></span><span></span><span></span></div>
+      <div>
+        <div style="font-size:0.9rem;font-weight:700" id="cellCarrier">Cellular: --</div>
+        <div style="font-size:0.74rem;color:var(--muted)" id="cellMeta">Waiting for modem cell info...</div>
+      </div>
+    </div>
+
+    <div class="rh-metrics">
+      <div class="rh-metric"><div class="m-lbl">Warnings</div><div class="m-val" id="rhWarns">0</div></div>
+      <div class="rh-metric"><div class="m-lbl">QMDL Capture</div><div class="m-val" id="rhCap">--</div></div>
+      <div class="rh-metric"><div class="m-lbl">Analyzed</div><div class="m-val" id="rhPkts">0 pkts</div></div>
+    </div>
+
+    <a class="btn" id="btnOpenRH" href="#" target="_blank">Open Rayhunter (:8080)</a>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card"><div class="label">Wi-Fi APs</div><div class="val" id="stWifi">0</div></div>
+  <div class="card"><div class="label">Cell Towers</div><div class="val" id="stCell">0</div></div>
+  <div class="card"><div class="label">BLE Devices</div><div class="val" id="stBle">0</div></div>
+  <div class="card"><div class="label">Probes / LoRa</div><div class="val" id="stExtra">0 / 0</div></div>
+  <div class="card"><div class="label">GPS-Tagged</div><div class="val" id="stGps">0</div></div>
+  <div class="card"><div class="label">Open Alerts</div><div class="val" id="stAlerts" style="color:var(--warn)">0</div></div>
+</div>
+
+<div class="toolbar">
+  <a class="btn primary" href="/api/v1/export/wigle.csv">Download WiGLE v1.6 CSV</a>
+  <a class="btn" href="/api/v1/export/session.geojson">Download GeoJSON</a>
+  <button onclick="uploadTarget('wigle')">Upload to WiGLE</button>
+  <button onclick="uploadTarget('wdgwars')">Upload to WDGWars</button>
+  <button onclick="uploadTarget('wardrift')">Upload to Wardrift</button>
+  <button onclick="togglePhoneGPS()" id="btnPhoneGPS">Start Phone GPS Bridge</button>
+  <span class="msg" id="actionMsg"></span>
+</div>
+
+<div class="tabs">
+  <button class="active" onclick="showTab('spectrum', this)">Live Spectrum</button>
+  <button onclick="showTab('alerts', this)">Alerts</button>
+  <button onclick="showTab('rules', this)">Signature Rules (JSON)</button>
+  <button onclick="showTab('settings', this)">Integrations &amp; Settings</button>
+</div>
+
+<section id="tab-spectrum" class="section active">
+  <div class="toolbar">
+    <button class="active" onclick="setFilter('', this)">All</button>
+    <button onclick="setFilter('WIFI', this)">Wi-Fi</button>
+    <button onclick="setFilter('LTE', this)">LTE</button>
+    <button onclick="setFilter('BLE', this)">BLE</button>
+    <button onclick="setFilter('WIFI_PROBE', this)">Probes</button>
+    <button onclick="setFilter('LORA', this)">LoRa</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Type</th><th>ID / MAC</th><th>Name / SSID</th>
+        <th class="hide-sm">Auth / Meta</th><th>Ch/MHz</th><th>RSSI</th>
+        <th class="hide-sm">GPS</th><th>Seen</th>
+      </tr>
+    </thead>
+    <tbody id="obsBody"></tbody>
+  </table>
+</section>
+
+<section id="tab-alerts" class="section">
+  <div id="alertsList"></div>
+</section>
+
+<section id="tab-rules" class="section">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="label">rules.json — Hot-reloadable Wi-Fi / BLE / Remote ID / OUI Signature Watchlist</div>
+      <button class="primary" onclick="saveRules()">Save &amp; Reload Rules</button>
+    </div>
+    <textarea id="rulesEditor" rows="18"></textarea>
+  </div>
+</section>
+
+<section id="tab-settings" class="section">
+  <div class="card">
+    <div class="sub-head" style="margin-top:0">General &amp; Detection</div>
+    <div class="form-grid">
+      <div>
+        <div class="label">Device Name (WiGLE Header)</div>
+        <input type="text" id="cfgDeviceName">
+      </div>
+      <div>
+        <div class="label">ntfy.sh Alert Topic URL (optional)</div>
+        <input type="text" id="cfgNtfy" placeholder="https://ntfy.sh/my-rayscout-topic">
+      </div>
+      <div>
+        <div class="label">Co-Moving Min Distinct Cell Towers</div>
+        <input type="number" id="cfgMinCells" min="2" max="20">
+      </div>
+    </div>
+
+    <div class="sub-head">Wardrift (wardrift.net — Username &amp; Password Login)</div>
+    <div class="form-grid">
+      <div>
+        <div class="label">Wardrift Username / Email</div>
+        <input type="text" id="cfgWdUser" placeholder="Your wardrift.net username">
+      </div>
+      <div>
+        <div class="label">Wardrift Password (leave blank to keep saved)</div>
+        <input type="password" id="cfgWdPass" placeholder="Saved securely in /data/rayscout/config.json">
+      </div>
+      <div>
+        <div class="label">Wardrift Base URL</div>
+        <input type="text" id="cfgWdUrl" placeholder="https://wardrift.net">
+      </div>
+      <div>
+        <div class="label">Login Path / Upload Path</div>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="cfgWdLoginPath" placeholder="/api/login">
+          <input type="text" id="cfgWdUploadPath" placeholder="/api/upload">
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-head">WiGLE &amp; Watch Dogs Go Wars (Token Auth)</div>
+    <div class="form-grid">
+      <div>
+        <div class="label">WiGLE Encoded API Token (leave blank to keep)</div>
+        <input type="password" id="cfgWigleToken" placeholder="From wigle.net/account -> API Token">
+      </div>
+      <div>
+        <div class="label">WDGWars Upload Endpoint</div>
+        <input type="text" id="cfgWdgUrl" placeholder="https://wdgwars.pl/api/upload-csv">
+      </div>
+      <div>
+        <div class="label">WDGWars Profile Token (leave blank to keep)</div>
+        <input type="password" id="cfgWdgToken" placeholder="From wdgwars.pl profile">
+      </div>
+    </div>
+
+    <div style="margin-top:14px">
+      <button class="primary" onclick="saveConfig()">Save Settings</button>
+      <span style="font-size:0.76rem;color:var(--muted);margin-left:10px">NMEA GPS TCP/UDP listener active on port 10110 (ShareGPS / GPS2IP)</span>
+    </div>
+  </div>
+</section>
+
+<script>
+let currentFilter = '';
+let gpsWatchId = null;
+
+// Point "Open Rayhunter (:8080)" to the same host (works over both localhost USB & 192.168.1.1 Wi-Fi).
+document.getElementById('btnOpenRH').href = `http://${window.location.hostname}:8080`;
+
+function showTab(name, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'rules') loadRules();
+  if (name === 'settings') loadConfig();
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  refreshObs();
+}
+
+function setMsg(text, isErr) {
+  const el = document.getElementById('actionMsg');
+  el.textContent = text;
+  el.className = isErr ? 'msg err' : 'msg';
+}
+
+function updateSignalBars(rssi) {
+  const box = document.getElementById('cellBars');
+  const spans = box.querySelectorAll('span');
+  let bars = 0;
+  if (rssi >= -70) bars = 5;
+  else if (rssi >= -80) bars = 4;
+  else if (rssi >= -90) bars = 3;
+  else if (rssi >= -100) bars = 2;
+  else if (rssi < 0) bars = 1;
+  box.className = bars <= 2 ? 'sig-bars weak' : 'sig-bars';
+  spans.forEach((s, idx) => s.className = idx < bars ? 'on' : '');
+}
+
+function formatBytes(b) {
+  if (!b) return '0 B';
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+  return (b / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+async function refreshStatus() {
+  try {
+    const r = await fetch('/api/v1/status');
+    const d = await r.json();
+    const s = d.stats || {};
+    document.getElementById('stWifi').textContent = s.wifi || 0;
+    document.getElementById('stCell').textContent = s.cell || 0;
+    document.getElementById('stBle').textContent = s.ble || 0;
+    document.getElementById('stExtra').textContent = (s.probe || 0) + ' / ' + (s.lora || 0);
+    document.getElementById('stGps').textContent = s.gps_tagged || 0;
+    document.getElementById('stAlerts').textContent = s.alerts_open || 0;
+
+    if (d.gps && d.gps.valid) {
+      document.getElementById('dotGPS').className = 'dot ok';
+      document.getElementById('txtGPS').textContent = `GPS (${d.gps.source}): ${d.gps.lat.toFixed(4)}, ${d.gps.lon.toFixed(4)}`;
+    } else {
+      document.getElementById('dotGPS').className = 'dot warn';
+      document.getElementById('txtGPS').textContent = 'GPS: No Fix';
+    }
+
+    // Prominent Rayhunter Hero update
+    const rh = d.rayhunter || {};
+    const hero = document.getElementById('rhHero');
+    const dotRH = document.getElementById('dotRH');
+    const badge = document.getElementById('rhBadge');
+    const sub = document.getElementById('rhSub');
+
+    if (rh.reachable) {
+      const wTotal = rh.warning_count || 0;
+      if ((rh.high_warnings || 0) > 0) {
+        hero.className = 'rh-hero high';
+        dotRH.className = 'dot high';
+        badge.textContent = `HIGH WARNING (${rh.high_warnings})`;
+      } else if (wTotal > 0) {
+        hero.className = 'rh-hero warn';
+        dotRH.className = 'dot warn';
+        badge.textContent = `WARNING (${wTotal})`;
+      } else {
+        hero.className = 'rh-hero';
+        dotRH.className = 'dot ok';
+        badge.textContent = rh.active_recording ? 'ALL CLEAR • LIVE REC' : 'ALL CLEAR';
+      }
+      const ver = rh.version ? `v${rh.version}` : 'online';
+      const disk = rh.disk_used_percent ? ` • Disk ${rh.disk_used_percent}` : '';
+      sub.textContent = rh.latest_warning
+        ? `Latest heuristic hit: ${rh.latest_warning}`
+        : `EFF Rayhunter ${ver} monitoring baseband QMDL (${rh.total_captures || 0} captures${disk})`;
+
+      document.getElementById('rhWarns').textContent = `${wTotal} (${rh.high_warnings||0}H/${rh.medium_warnings||0}M)`;
+      document.getElementById('rhCap').textContent = formatBytes(rh.capture_bytes || 0);
+      document.getElementById('rhPkts').textContent = `${rh.analyzed_packets || 0} pkts`;
+
+      if (typeof rh.battery_level === 'number' && rh.battery_level >= 0) {
+        document.getElementById('pillBatt').style.display = 'inline-flex';
+        document.getElementById('txtBatt').textContent = `Battery: ${rh.battery_level}%${rh.battery_plugged ? ' ⚡' : ''}`;
+      }
+    } else {
+      hero.className = 'rh-hero offline';
+      dotRH.className = 'dot';
+      badge.textContent = d.demo_mode ? 'DEMO MODE' : 'OFFLINE';
+      sub.textContent = d.demo_mode
+        ? 'Running simulated desktop preview (live Rayhunter attaches automatically on Orbic).'
+        : 'Rayhunter daemon not reachable on :8080.';
+    }
+
+    // Prominent Cellular Signal Meter update
+    const cell = d.current_cell;
+    if (cell) {
+      updateSignalBars(cell.rssi);
+      document.getElementById('cellCarrier').textContent = `${cell.name || 'Cellular'} ${cell.type} • ${cell.rssi} dBm`;
+      document.getElementById('cellMeta').textContent = `Cell ${cell.id} • Seen ${cell.seen_count}x`;
+    } else {
+      updateSignalBars(-120);
+      document.getElementById('cellCarrier').textContent = 'Cellular: Scanning...';
+      document.getElementById('cellMeta').textContent = 'Polling Orbic modem AT interface';
+    }
+
+    if (d.companion && d.companion.connected) {
+      document.getElementById('dotS3').className = 'dot ok';
+      const tags = [d.companion.node_id || 'S3'];
+      if (d.companion.has_lora) tags.push('SX1262');
+      if (d.companion.has_gps) tags.push('GPS');
+      document.getElementById('txtS3').textContent = 'XIAO: ' + tags.join('+');
+    } else {
+      document.getElementById('dotS3').className = 'dot';
+      document.getElementById('txtS3').textContent = 'XIAO S3: Standalone';
+    }
+  } catch (e) {}
+}
+
+async function refreshObs() {
+  try {
+    const q = currentFilter ? `?type=${encodeURIComponent(currentFilter)}&limit=150` : '?limit=150';
+    const r = await fetch('/api/v1/observations' + q);
+    const list = await r.json();
+    const tb = document.getElementById('obsBody');
+    tb.innerHTML = list.map(o => {
+      const gpsTxt = (o.gps && o.gps.valid) ? `${o.gps.lat.toFixed(4)}, ${o.gps.lon.toFixed(4)}` : '--';
+      const extra = (o.vendor_ies && o.vendor_ies.length) ? ` IE:${o.vendor_ies.join(',')}` : '';
+      return `<tr>
+        <td><span class="badge ${o.type}">${o.type}</span></td>
+        <td>${esc(o.id)}</td>
+        <td>${esc(o.name || '<hidden>')}</td>
+        <td class="hide-sm">${esc((o.auth_mode || '') + extra)}</td>
+        <td>${o.channel || '-'}/${o.frequency || '-'}</td>
+        <td>${o.rssi} dBm</td>
+        <td class="hide-sm">${gpsTxt}</td>
+        <td>${o.seen_count}x</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {}
+}
+
+async function refreshAlerts() {
+  try {
+    const r = await fetch('/api/v1/alerts');
+    const list = await r.json();
+    const box = document.getElementById('alertsList');
+    if (!list.length) {
+      box.innerHTML = '<div class="card" style="color:var(--muted)">No alerts triggered yet.</div>';
+      return;
+    }
+    box.innerHTML = list.map(a => `
+      <div class="alert-item ${a.severity} ${a.acked ? 'acked' : ''}">
+        <div>
+          <div><strong>[${a.severity.toUpperCase()}] ${esc(a.title)}</strong> <span style="color:var(--muted);font-size:0.75rem">${new Date(a.timestamp).toLocaleTimeString()}</span></div>
+          <div style="font-size:0.82rem;margin-top:3px">${esc(a.detail)}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          ${a.device_id ? `<button onclick="whitelistMac('${esc(a.device_id)}')">Whitelist</button>` : ''}
+          ${!a.acked ? `<button onclick="ackAlert('${esc(a.id)}')">Ack</button>` : ''}
+        </div>
+      </div>`).join('');
+  } catch (e) {}
+}
+
+async function ackAlert(id) {
+  await fetch('/api/v1/alerts/ack', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({id}) });
+  refreshAlerts(); refreshStatus();
+}
+
+async function whitelistMac(mac) {
+  await fetch('/api/v1/whitelist', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({mac}) });
+  setMsg('Whitelisted ' + mac);
+}
+
+async function uploadTarget(target) {
+  setMsg('Uploading to ' + target + '...');
+  try {
+    const r = await fetch('/api/v1/upload/' + target, { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) setMsg(`${d.result.target}: uploaded ${d.result.rows} rows (HTTP ${d.result.status_code})`);
+    else setMsg(d.error || 'Upload failed', true);
+  } catch (e) { setMsg('Upload error: ' + e.message, true); }
+}
+
+function togglePhoneGPS() {
+  const btn = document.getElementById('btnPhoneGPS');
+  if (gpsWatchId !== null) {
+    navigator.geolocation.clearWatch(gpsWatchId);
+    gpsWatchId = null;
+    btn.textContent = 'Start Phone GPS Bridge';
+    setMsg('Phone GPS Bridge stopped');
+    return;
+  }
+  if (!navigator.geolocation) {
+    setMsg('Geolocation unavailable (note: mobile browsers require HTTPS or use NMEA app on port 10110)', true);
+    return;
+  }
+  gpsWatchId = navigator.geolocation.watchPosition(async pos => {
+    await fetch('/api/v1/gps', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        lat: pos.coords.latitude,
+        lon: pos.coords.longitude,
+        alt: pos.coords.altitude || 0,
+        acc: pos.coords.accuracy || 10,
+        speed: pos.coords.speed || 0,
+        source: 'phone_browser'
+      })
+    });
+    refreshStatus();
+  }, err => {
+    setMsg('Browser GPS blocked (' + err.message + '). Tip: Use ShareGPS/GPS2IP NMEA -> port 10110', true);
+  }, { enableHighAccuracy: true, maximumAge: 2000 });
+  btn.textContent = 'Stop Phone GPS Bridge';
+  setMsg('Phone GPS Bridge streaming...');
+}
+
+async function loadRules() {
+  const r = await fetch('/api/v1/rules');
+  const d = await r.json();
+  document.getElementById('rulesEditor').value = JSON.stringify(d, null, 2);
+}
+
+async function saveRules() {
+  const raw = document.getElementById('rulesEditor').value;
+  const r = await fetch('/api/v1/rules', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: raw });
+  if (r.ok) { const d = await r.json(); setMsg('Reloaded ' + d.count + ' rules'); }
+  else setMsg('Invalid JSON: ' + await r.text(), true);
+}
+
+async function loadConfig() {
+  const r = await fetch('/api/v1/config');
+  const d = await r.json();
+  document.getElementById('cfgDeviceName').value = d.device_name || '';
+  document.getElementById('cfgWdgUrl').value = d.wdgwars_url || '';
+  document.getElementById('cfgNtfy').value = d.ntfy_url || '';
+  document.getElementById('cfgMinCells').value = d.comoving_min_cells || 3;
+  document.getElementById('cfgWdUser').value = d.wardrift_username || '';
+  document.getElementById('cfgWdUrl').value = d.wardrift_url || 'https://wardrift.net';
+  document.getElementById('cfgWdLoginPath').value = d.wardrift_login_path || '/api/login';
+  document.getElementById('cfgWdUploadPath').value = d.wardrift_upload_path || '/api/upload';
+}
+
+async function saveConfig() {
+  const body = {
+    device_name: document.getElementById('cfgDeviceName').value,
+    wdgwars_url: document.getElementById('cfgWdgUrl').value,
+    ntfy_url: document.getElementById('cfgNtfy').value,
+    comoving_min_cells: parseInt(document.getElementById('cfgMinCells').value, 10) || 3,
+    wardrift_username: document.getElementById('cfgWdUser').value,
+    wardrift_url: document.getElementById('cfgWdUrl').value,
+    wardrift_login_path: document.getElementById('cfgWdLoginPath').value,
+    wardrift_upload_path: document.getElementById('cfgWdUploadPath').value
+  };
+  const wt = document.getElementById('cfgWigleToken').value.trim();
+  if (wt) body.wigle_auth_token = wt;
+  const gt = document.getElementById('cfgWdgToken').value.trim();
+  if (gt) body.wdgwars_token = gt;
+  const wp = document.getElementById('cfgWdPass').value;
+  if (wp) body.wardrift_password = wp;
+
+  const r = await fetch('/api/v1/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (r.ok) {
+    document.getElementById('cfgWigleToken').value = '';
+    document.getElementById('cfgWdgToken').value = '';
+    document.getElementById('cfgWdPass').value = '';
+    setMsg('Settings saved');
+    refreshStatus();
+  } else setMsg('Save failed', true);
+}
+
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+refreshStatus(); refreshObs(); refreshAlerts();
+setInterval(() => { refreshStatus(); refreshObs(); refreshAlerts(); }, 3000);
+</script>
+</body>
+</html>

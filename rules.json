@@ -1,0 +1,72 @@
+{
+  "version": "1.0",
+  "description": "Modular passive RF signature rules for RayScout (editable in Web UI)",
+  "rules": [
+    {
+      "id": "astm-remote-id-wifi",
+      "name": "Drone Remote ID (Wi-Fi Beacon)",
+      "category": "remote_id",
+      "severity": "info",
+      "radio_types": ["WIFI"],
+      "vendor_ies": ["FA:0B:BC"],
+      "description": "FAA / ASTM F3411 Drone Remote ID broadcast inside Wi-Fi Beacon Vendor-Specific IE."
+    },
+    {
+      "id": "astm-remote-id-ble",
+      "name": "Drone Remote ID (BLE)",
+      "category": "remote_id",
+      "severity": "info",
+      "radio_types": ["BLE"],
+      "service_uuids": ["FFFA", "0000FFFA-0000-1000-8000-00805F9B34FB"],
+      "description": "FAA / ASTM F3411 Drone Remote ID broadcast over BLE Service Data (0xFFFA)."
+    },
+    {
+      "id": "ble-tracker-findmy",
+      "name": "Apple FindMy / AirTag Advertisement",
+      "category": "signature",
+      "severity": "info",
+      "radio_types": ["BLE"],
+      "mfg_ids": ["0x004C"],
+      "name_substrings": ["AirTag", "FindMy"],
+      "description": "Apple FindMy accessory advertisement (pair with Co-Moving tracker to spot persistent following)."
+    },
+    {
+      "id": "ble-tracker-tile",
+      "name": "Tile BLE Tracker",
+      "category": "signature",
+      "severity": "info",
+      "radio_types": ["BLE"],
+      "service_uuids": ["FEED", "FEEC"],
+      "description": "Tile Bluetooth tracking beacon."
+    },
+    {
+      "id": "ble-tracker-smarttag",
+      "name": "Samsung SmartTag BLE Tracker",
+      "category": "signature",
+      "severity": "info",
+      "radio_types": ["BLE"],
+      "service_uuids": ["FD5A"],
+      "description": "Samsung SmartTag Bluetooth tracking beacon."
+    },
+    {
+      "id": "dji-drone-ap",
+      "name": "DJI Drone / Controller Wi-Fi AP",
+      "category": "signature",
+      "severity": "info",
+      "radio_types": ["WIFI", "WIFI_PROBE"],
+      "ouis": ["60:60:1F", "34:D2:62", "48:1C:B9"],
+      "name_substrings": ["MAVIC", "PHANTOM", "DJI-"],
+      "description": "Common DJI drone or controller Wi-Fi OUI / SSID."
+    },
+    {
+      "id": "open-captive-hotspot",
+      "name": "High-Risk Generic Open AP",
+      "category": "signature",
+      "severity": "warn",
+      "radio_types": ["WIFI"],
+      "name_substrings": ["Free_WiFi", "Free Public WiFi", "attwifi", "xfinitywifi"],
+      "require_open": true,
+      "description": "Open network matching common rogue/evil-twin hotspot SSID patterns."
+    }
+  ]
+}

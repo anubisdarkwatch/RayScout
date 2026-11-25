@@ -1,0 +1,7 @@
+dist/
+demo-data/
+config.json
+orbic-hub/cmd/installer/payload/
+xiao-sensor/.pio/
+xiao-sensor/include/secrets.h
+*.exe
