@@ -1,65 +1,171 @@
-# RayScout — Orbic RC400L RF Hub + Optional XIAO ESP32-S3 / Wio-SX1262
+# RayScout
 
-RayScout runs cleanly alongside **EFF Rayhunter** on your **Orbic RC400L** hotspot (`http://192.168.1.1:8090`) and turns it into a standalone cellular/Wi-Fi situational awareness & wardriving rig—with plug-and-play support for a **Seeed XIAO ESP32-S3** (BLE + 2.4 GHz promiscuous Wi-Fi + optional UART GPS) and **Wio-SX1262** (915 MHz LoRa off-grid alert relay & passive LoRa logging).
+**Turn your EFF Rayhunter Orbic RC400L hotspot into a pocketable RF situational awareness, counter-surveillance, and multi-band wardriving rig — with zero Linux commands required to install.**
 
-## Features
-
-### Standalone Orbic RC400L (`orbic-hub/`)
-- **Zero-Conflict Rayhunter Coexistence:** Never touches `/dev/diag`. Polls Rayhunter's local HTTP API (`http://127.0.0.1:8080/api/qmdl-manifest`) to surface cellular anomalies and forwards live GPS coordinates to Rayhunter's `/api/gps` endpoint.
-- **Dual-Band Wi-Fi Scanner (`2.4 + 5 GHz`):** Parses `iw scan` (with `iwlist` fallback) including Vendor-Specific Information Elements (e.g., ASTM F3411 `FA:0B:BC` Wi-Fi Beacon Drone Remote ID).
-- **Cellular Tower Poller & Baseline Differ:** Non-exclusive AT polling for `LTE`/`GSM`/`WCDMA`/`NR` cell metadata; alerts on 2G downgrades, sudden neighbor-cell drops, or unmapped strong towers (via optional `/data/rayscout/cell_baseline.csv`).
-- **Co-Moving / Persistent Device Tracker:** Signature-free detection of Wi-Fi/BLE devices following you across ≥3 distinct cell towers or >800m of GPS travel.
-- **Hot-Reloadable `rules.json`:** Edit OUI, SSID, Vendor-IE, BLE Manufacturer ID, and BLE Service UUID watchlists live in the Web UI.
-- **Wardriving Ecosystem Exports & Auto-Upload:**
-  - Spec-compliant **WiGLE CSV v1.6** (`WIFI` + `LTE`/`GSM` + `BLE` in one file) with direct **WiGLE.net API** upload.
-  - Direct **Watch Dogs Go Wars (`wdgwars.pl`)** CSV upload/export.
-  - **GeoJSON** export (for QGIS, geojson.io, Wardrift/DeFlock cross-referencing).
-- **Multi-Source GPS:** Accepts **NMEA-0183 over TCP/UDP port `10110`** (ShareGPS / GPS2IP on Android/iOS), **Phone Browser GPS Bridge**, or **XIAO ESP32-S3 UART GPS**.
-
-### Optional Companion Sensor (`xiao-sensor/`)
-- **`xiao_esp32s3`** (Seeed XIAO ESP32-S3): Time-sliced **BLE 5.0 scanner** + **2.4 GHz Wi-Fi Promiscuous sniffer** (probe request OUIs + deauth/disassoc flood counter) + optional UART GPS (`RX=GPIO44, TX=GPIO43`).
-- **`xiao_esp32s3_sx1262`** (Seeed Wio-SX1262 + XIAO ESP32-S3): Adds **915 MHz LoRa off-grid alert relay** (transmits high-priority Rayhunter/RayScout alerts even when cellular is down) and passive LoRa packet/RSSI logging using the B2B pinout (`SCK=7, MISO=8, MOSI=9, CS=41, BUSY=40, DIO1=39, RST=42`).
+RayScout runs cleanly side-by-side with [**EFF Rayhunter**](https://github.com/EFForg/rayhunter) (and optionally [**DagShell**](https://github.com/dagnazty/DagShell)) on the Orbic RC400L. It works **100% standalone** out of the box for dual-band Wi-Fi, cellular monitoring, and wardriving, and automatically expands to **BLE 5.0, 2.4 GHz Wi-Fi probe/deauth sniffing, and 915 MHz LoRa** the moment you power on an optional **Seeed Studio XIAO ESP32-S3** or **Wio-SX1262** companion board.
 
 ---
 
-## Quick Start (Windows)
+## Hardware Capabilities
 
-### 1. Prerequisites
-- **Go 1.22+** (for building the Orbic ARMv7 binary): `winget install GoLang.Go`
-- **ADB** (for pushing to your rooted Rayhunter Orbic): `winget install Google.PlatformTools`
-- **PlatformIO** (optional, for flashing the XIAO ESP32-S3 boards): `pip install platformio`
+| Mode | Hardware | What It Monitors & Does |
+| :--- | :--- | :--- |
+| **Standalone Core** | **Orbic RC400L** (with EFF Rayhunter) | Dual-band **2.4 GHz & 5 GHz Wi-Fi AP scanning** (including Beacon Vendor-Specific IEs for FAA/ASTM F3411 Drone Remote ID), **LTE/GSM/WCDMA/NR cell-tower logging**, live **EFF Rayhunter sentinel banner** (warnings, QMDL size, battery %, 5-bar cellular signal), **Co-Moving / Persistent AP tracking**, embedded dark-mode Web UI, and **WiGLE v1.6 / WDGWars / Wardrift / GeoJSON** export & upload. |
+| **+ BLE & Probe Companion** | **Seeed XIAO ESP32-S3** | Adds **BLE 5.0 scanning** (UUIDs, Manufacturer IDs, BLE Remote ID, trackers), **2.4 GHz Wi-Fi promiscuous probe-request sniffing**, **deauth/disassoc flood detection**, and optional **UART GPS** (`GPIO43/44`). |
+| **+ Sub-GHz LoRa Relay** | **Seeed Wio-SX1262 + XIAO ESP32-S3** | Everything above **plus** **915 MHz LoRa off-grid alert relaying** (broadcasts high-priority Rayhunter/RayScout alerts even when cellular is down) and passive LoRa packet/RSSI logging. |
 
-### 2. One-Click Install on Your Orbic RC400L (No Linux Commands!)
-1. Plug your powered-on Orbic (with Rayhunter installed) into your PC with a data-capable USB-C cable.
-2. Double-click **`dist\RayScout-Installer.exe`**.
-3. Choose **`[1] Install / Update RayScout on Orbic`** (or **`[2] Temporary Test Run`** if you want to try it until reboot without touching boot files).
-4. The installer automatically pushes the ARMv7 binary, sets up USB port forwarding, and opens **`http://localhost:8090`** in your browser — **no Wi-Fi switching or Linux shell required!**
-   - Over Orbic Wi-Fi (on your phone/laptop): `http://192.168.1.1:8090`
-   - EFF Rayhunter remains untouched at: `http://192.168.1.1:8080` (or `http://localhost:8080` over USB)
-
-### 3. Preview Locally in Demo Mode (No Orbic Needed)
-Double-click **`Launch-Demo.bat`** (or run `.\dist\rayscout.exe -demo -rules .\rules.json`) to explore simulated Wi-Fi, LTE handoffs, a Co-Moving alert, a Remote ID drone hit, BLE sightings, and WiGLE/GeoJSON downloads at **http://localhost:8090**.
-
-### 4. Rebuilding From Source (Optional)
-```powershell
-.\scripts\build-orbic.ps1 -IncludeWindows
+```text
+┌────────────────────────────────────────────────────────────────────┐
+│                    ORBIC RC400L (Standalone Hub)                   │
+│  • EFF Rayhunter Bridge (:8080) — live warnings, battery & GPS     │
+│  • Dual-Band Wi-Fi Scanner (2.4 & 5 GHz + Beacon Remote ID IEs)    │
+│  • Non-Exclusive Modem AT Cell Poller (never touches /dev/diag)    │
+│  • Co-Moving Device Tracker + Cell Anomaly Differ + rules.json     │
+│  • WiGLE v1.6 CSV / GeoJSON + WiGLE, WDGWars & Wardrift Uploaders  │
+│  • Offline Web Dashboard (:8090) + Phone NMEA GPS Listener (:10110)│
+└─────────────────────────────────▲──────────────────────────────────┘
+                                  │ Wi-Fi HTTP POST (/api/v1/ingest)
+                                  │ (Returns pending LoRa alert queue)
+┌─────────────────────────────────┴──────────────────────────────────┐
+│         OPTIONAL: Seeed XIAO ESP32-S3 (+ Wio-SX1262 Kit)           │
+│  • Time-sliced BLE 5.0 Scanner + 2.4 GHz Wi-Fi Probe/Deauth Sniffer│
+│  • Optional Wio-SX1262 (915 MHz LoRa alert TX & passive RX)        │
+│  • Optional UART GPS module on free XIAO pins (RX=44, TX=43)       │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4. Configure GPS (Standalone Mode)
-For WiGLE/WDGWars wardriving without an external GPS module:
-- **Best mobile option (works over plain HTTP/LAN):** Install **ShareGPS** (Android) or **GPS2IP** (iOS), connect your phone to the Orbic Wi-Fi, and stream **NMEA over TCP or UDP to `192.168.1.1:10110`**.
-- RayScout automatically locks onto the NMEA stream and mirrors fixes to Rayhunter's `/api/gps`.
+---
 
-### 5. Flash Your XIAO ESP32-S3 / Wio-SX1262 Companion
-1. Copy `xiao-sensor/include/secrets.example.h` to `xiao-sensor/include/secrets.h` (gitignored) and set `ORBIC_WIFI_SSID` and `ORBIC_WIFI_PASS` to your Orbic's Wi-Fi credentials.
-2. Flash your chosen board:
+## Quick Start: Installing on Your Orbic RC400L (No Linux Skills Needed)
+
+### Prerequisites
+* An **Orbic RC400L** hotspot already running [**EFF Rayhunter**](https://github.com/EFForg/rayhunter) (with USB ADB / root access enabled).
+* A Windows PC with **ADB** installed (`scoop install adb` or `winget install Google.PlatformTools`).
+* A **data-capable USB-C cable** (some charging-only cables will not detect ADB).
+
+### Step 1 — Get or Build `RayScout-Installer.exe`
+* **Easiest:** Download `RayScout-Installer.exe` from the **Releases** page (if published), **or**
+* **Build from source** (requires Go 1.22+ via `scoop install go` or `winget install GoLang.Go`):
+  ```powershell
+  git clone https://github.com/anubisdarkwatch/RayScout.git
+  cd RayScout
+  .\scripts\build-orbic.ps1 -IncludeWindows
+  ```
+  This cross-compiles the static ARMv7 Orbic binary and bundles everything (binary, `rules.json`, default config, and boot script) into a single **`dist\RayScout-Installer.exe`**.
+
+### Step 2 — One-Click Flash Over USB
+1. Power on your Orbic RC400L and plug it into your PC via USB-C.
+2. Double-click **`dist\RayScout-Installer.exe`**.
+3. Confirm it shows **`Orbic RC400L detected via USB`** and your root method (`direct`, `rootshell`, or `nc24`).
+4. Choose:
+   * **`[1] Install / Update RayScout on Orbic`** — installs to `/data/rayscout`, opens firewall ports `8090` & `10110`, sets up auto-start on boot, and leaves EFF Rayhunter completely untouched.
+   * **`[2] Temporary Test Run`** — runs until your next reboot without modifying boot scripts.
+5. The installer automatically forwards USB ports and opens **`http://localhost:8090`** in your browser!
+
+> **Updating later:** Running option `[1]` again safely upgrades the binary while keeping your existing `/data/rayscout/config.json` (saved WiGLE, WDGWars, and Wardrift credentials).
+
+---
+
+## Accessing the Dashboard (PC vs. Phone)
+
+| Device | Connection | RayScout URL | EFF Rayhunter URL |
+| :--- | :--- | :--- | :--- |
+| **Phone / Tablet** | Connected to Orbic Wi-Fi AP | `http://192.168.1.1:8090` | `http://192.168.1.1:8080` |
+| **PC (over USB)** | USB-C cable (via Installer option `[3]`) | `http://localhost:8090` | `http://localhost:8080` |
+
+> **Note:** On your phone, always use **`http://192.168.1.1:8090`** (not `localhost`, which points to the phone itself).
+
+---
+
+## Phone GPS Setup for Wardriving (WiGLE, WDGWars & Wardrift)
+
+Because the Orbic RC400L has no built-in GPS receiver, RayScout listens for standard **NMEA-0183** GPS streams on port **`10110`** (UDP & TCP) — and automatically forwards valid GPS fixes to **EFF Rayhunter's `/api/gps`** as well.
+
+1. Install a lightweight NMEA GPS streamer app on your phone:
+   * **Android (Google Play):** *Share GPS: NMEA, gpsd & KML*
+   * **Android (F-Droid / Open Source):** *gpsdRelay* or *GPSd Forwarder*
+   * **iPhone (App Store):** *GPS2IP* (or *GPS2IP Lite*)
+2. Connect your phone to your Orbic's Wi-Fi hotspot.
+3. Add a new **NMEA** stream in the app:
+   * **Protocol:** `UDP Client` (or `TCP Client`)
+   * **Host / IP:** `192.168.1.1`
+   * **Port:** `10110`
+4. Start streaming — the **`GPS: No Fix`** badge on `http://192.168.1.1:8090` will turn **green** within seconds, and `GPS-TAGGED` observations will begin recording.
+
+### Exporting & Uploading Wardriving Sessions
+From `http://192.168.1.1:8090`, you can either **download files straight to your phone** or configure **one-click direct uploads** in the **Integrations & Settings** tab:
+* **Download WiGLE v1.6 CSV** — Contains GPS-tagged `WIFI`, `BLE`, and `LTE`/`GSM`/`NR` observations in a single spec-compliant `WigleWifi-1.6` file.
+* **Download GeoJSON** — Ready for QGIS, geojson.io, uMap, and community mapping tools.
+* **WiGLE (`wigle.net`)** — Paste your *Encoded API Token* from `wigle.net/account`.
+* **Watch Dogs Go Wars (`wdgwars.pl`)** — Paste your profile upload token.
+* **Wardrift (`wardrift.net`)** — Enter your Wardrift username & password (stored locally in `/data/rayscout/config.json`, never echoed back to the browser).
+
+---
+
+## Optional: Flashing the Seeed XIAO ESP32-S3 / Wio-SX1262 Companion
+
+Adding a XIAO ESP32-S3 takes ~2 minutes and unlocks **BLE 5.0**, **2.4 GHz Wi-Fi probe requests**, **deauth flood detection**, and (on the Wio-SX1262 kit) **915 MHz LoRa**.
+
+### 1. Configure Your Orbic Wi-Fi Credentials
+Copy `xiao-sensor/include/secrets.example.h` to **`xiao-sensor/include/secrets.h`** (gitignored) and enter your Orbic's 2.4 GHz hotspot SSID & passphrase:
+```cpp
+#pragma once
+#define ORBIC_WIFI_SSID "Your-Orbic-SSID"
+#define ORBIC_WIFI_PASS "Your-Orbic-Password"
+```
+*(Ensure your Orbic Wi-Fi AP is set to 2.4 GHz, as the ESP32-S3 is a 2.4 GHz Wi-Fi radio.)*
+
+### 2. Flash with PlatformIO
+Install PlatformIO (`pip install --user platformio`), plug in your XIAO board via USB-C, and run:
 ```powershell
 cd xiao-sensor
 
-# Bare Seeed XIAO ESP32-S3:
-pio run -e xiao_esp32s3 -t upload
+# For the bare Seeed Studio XIAO ESP32-S3:
+python -m platformio run -e xiao_esp32s3 -t upload
 
-# Seeed Wio-SX1262 + XIAO ESP32-S3 kit:
-pio run -e xiao_esp32s3_sx1262 -t upload
+# For the Seeed Studio Wio-SX1262 + XIAO ESP32-S3 kit:
+python -m platformio run -e xiao_esp32s3_sx1262 -t upload
 ```
-Power the XIAO from a USB power bank (or car USB port) near the Orbic—it will automatically join the Orbic AP and light up **BLE + Wi-Fi Probes + Deauths (+ SX1262 LoRa)** inside the RayScout dashboard!
+
+**Bootloader tip (if `esptool` cannot auto-reset):**
+1. **Hold** the tiny **`B` (BOOT)** button on the XIAO.
+2. While holding `B`, **tap `R` (RESET)** (or unplug/replug USB-C), then release `B`.
+3. Run the upload command above, and **tap `R` once** after flashing completes to boot into RayScout!
+
+### Hardware Pinout Reference (Wio-SX1262 + XIAO ESP32-S3)
+| Subsystem | Pins (ESP32-S3 GPIO) | Notes |
+| :--- | :--- | :--- |
+| **Wio-SX1262 SPI** | `SCK=7`, `MISO=8`, `MOSI=9` | Native B2B connector |
+| **Wio-SX1262 Control** | `CS=41`, `BUSY=40`, `DIO1=39`, `RST=42` | 906.875 MHz US default, 1.8V TCXO, DIO2 RF switch |
+| **Optional UART GPS** | `TX=43`, `RX=44` (9600 baud) | Free XIAO UART pins for Seeed L76K / BN-220 / ATGM336H |
+
+---
+
+## Customizing Detection Rules (`rules.json`)
+
+You can edit passive signature rules live from the **Signature Rules (JSON)** tab in the Web UI (no restart required). Rules support matching by:
+* `radio_types`: `WIFI`, `BLE`, `WIFI_PROBE`, `LTE`, `GSM`, `LORA`
+* `ouis`: 3-octet MAC prefixes (e.g., `"60:60:1F"`)
+* `name_substrings`: Case-insensitive SSID or BLE name substrings
+* `vendor_ies`: 802.11 Beacon Vendor-Specific IE OUIs (e.g., `"FA:0B:BC"` for ASTM F3411 Drone Remote ID)
+* `mfg_ids`: BLE Company IDs (e.g., `"0x004C"`)
+* `service_uuids`: BLE GATT Service UUIDs (e.g., `"FFFA"`, `"FEED"`, `"FD5A"`)
+
+> **Tip:** If you are in a crowded area with lots of Apple devices, remove `"mfg_ids": ["0x004C"]` from the `ble-tracker-findmy` rule in the Web UI to keep alerts quiet and high-signal.
+
+---
+
+## Local Desktop Demo Mode
+
+Want to preview the UI, simulated Co-Moving alerts, Remote ID hits, and WiGLE CSV export on Windows without an Orbic?
+```powershell
+.\scripts\build-orbic.ps1 -IncludeWindows
+.\Launch-Demo.bat
+```
+Then open **`http://localhost:8090`**.
+
+---
+
+## Ethical & Passive-Only Notice
+
+RayScout is strictly a **passive** radio-frequency awareness, security research, and wardriving logging tool. It only listens to publicly broadcast beacons, advertisements, and cellular control-plane telemetry — it does not jam, deauthenticate, intercept private traffic, or connect to unauthorized networks. Use responsibly and in compliance with local laws.
